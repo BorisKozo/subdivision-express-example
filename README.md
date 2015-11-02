@@ -102,5 +102,100 @@ Express ````app```` as an argument and registers all the routes of that module i
      });
  });
  ```
-    
+
+## Providing the routes    
    
+   Now that the consumer is ready it is time to provide it with some routes. Subdivision defines a concept called manifest.
+   The manifest is yet another fancy name for an object with a specific structure that can be read by the manifest reader and 
+   automatically fill the registry. In our example the manifest of the admin module looks like this:
+   
+```js
+module.exports = {
+    paths: [
+        {
+            path: 'Express/Routes',
+            addins: [
+                {
+                    type: 'ExpressRoute', //this should be same as the builder that is going to read this addin
+                    order: 100, //This can be any number or can be omitted if you don't care about the order
+                    route: '/admin/log',
+                    verb: 'get',
+                    routeHandler: function (req, res) {
+                        res.send('Got the log');
+                    }
+                },
+                {
+                    id: 'postAdminLog',
+                    order: 100,
+                    type: 'ExpressRoute',
+                    route: '/admin/log',
+                    verb: 'post',
+                    routeHandler: function (req, res) {
+                        res.send('Posted something to the log');
+                    }
+                }
+            ]
+        }
+    ]
+};
+```
+
+Basically it is just an array of paths. Each path object contains the actual path and an array of addins to add to that path.
+With this structure you can add addins to multiple path with the same manifest. Each addin is a simple JavaScript object that
+conforms to the contract represented by the path. In this example we define that each addin on the "Express/Routes" path contains
+ the route, verb, and routeHandler. To allow our addins be built by the builder defined in the ````app.js```` file, we must
+ specify its type as the target of the builder. The id and order fields are used by the registry. Each addin within a path
+  must have a unique id within that path (two different paths may contain addins with identical ids). The ids allow us to use
+  the advanced ordering features of the registry (see section about sorting in the library documentation). To understand 
+  ordering lets look at the manifest of the users module.
+  
+```js
+module.exports = {
+    paths: [
+        {
+            path: 'Express/Routes',
+            addins: [
+                {
+                    id: 'verifyUser',
+                    type: 'ExpressRoute', //this should be same as the builder that is going to read this addin
+                    order: 0, //This can be any number or can be omitted if you don't care about the order
+                    verb: 'use',
+                    routeHandler: function (req, res, next) {
+                        console.log('Verified User');
+                        next();
+                    }
+                },
+                {
+                    id: 'doSomethingWithUser',
+                    order: '>verifyUser',
+                    type: 'ExpressRoute',
+                    verb: 'use',
+                    routeHandler: function (req, res, next) {
+                        console.log('did something with user');
+                        next();
+                    }
+                },
+                {
+                    type: 'ExpressRoute', //this should be same as the builder that is going to read this addin
+                    order: '>>doSomethingWithUser', //This can be any number or can be omitted if you don't care about the order
+                    route: '/user',
+                    verb: 'get',
+                    routeHandler: function (req, res) {
+                        res.send('User info');
+                    }
+                }
+            ]
+        }
+    ]
+};
+```
+
+This manifest contains three addins but this time we have middleware that works on all the routes of our application. 
+The ordering applies to all the addins within the "Express/Routes" path. This allows us to define the "verifyUser" addin
+with order 0 which makes it the first addin to be built. Next we define the "doSomethingWithUser" addin but the fact that 
+it comes right after the "verifyUser" addin in the manifest does not guarantee its position in the build process. We specify
+its order as "right after" (> symbol) the addin with id "verifyUser". When the path is built in ````app.js````, the ordering 
+algorithm makes sure that the actual order is as specified by the ````order```` property of all the addins in the built path.
+The third addin in the manifest uses the "somewhere after" (>> symbol) to specify that it must be after the addin with id "doSomethingWithUser"
+but not necessarily right after it.
+  
