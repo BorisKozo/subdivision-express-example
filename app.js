@@ -7,14 +7,31 @@ subdivision.readManifestFilesSync(__dirname + '/modules/**/manifest.js');
 
 subdivision.start().then(function () {
     subdivision.addBuilder({
-        target: 'ExpressRoute', //This can be any string
+        target: 'SubRouter',
         build: function (addin) {
-            var route = addin.route || '/'; //default route of express
-            app[addin.verb](route, addin.routeHandler);
+            var router = express.Router();
+            var addins = subdivision.getAddins(addin.routesPath);
+            addins.forEach(function (innerAddin) {
+                var route = innerAddin.route || '/';
+                if (innerAddin.type === 'ExpressRoute') {
+                    router[innerAddin.verb](innerAddin.route, innerAddin.routeHandler);
+                } else {
+                    router.use(innerAddin.route, subdivision.getBuilder(innerAddin.type).build(innerAddin)); //I will add a function for this, this is silly
+                }
+
+            });
+            return router;
         }
     });
 
-    subdivision.build('Express/Routes');
+    subdivision.build('Modules/General/Routers').forEach(function (router) {
+        app.use('/foo', router);
+    });
+    //var rr = express.Router();
+    //rr.get('/bar', function (req, res) {
+    //    res.send('Foobar!');
+    //});
+    //app.use('/bar', rr);
     var server = app.listen(9000, function () {
         var host = server.address().address;
         var port = server.address().port;
