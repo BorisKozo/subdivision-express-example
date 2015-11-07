@@ -16,7 +16,7 @@ subdivision.start().then(function () {
                 if (innerAddin.type === 'ExpressRoute') {
                     router[innerAddin.verb](innerAddin.route, innerAddin.routeHandler);
                 } else {
-                    router.use(innerAddin.route, subdivision.getBuilder(innerAddin.type).build(innerAddin)); //I will add a function for this, this is silly
+                    router.use(innerAddin.route, subdivision.getBuilder(innerAddin.type).build(innerAddin)); //I will add a function for this, this syntax is silly
                 }
 
             });
@@ -27,11 +27,7 @@ subdivision.start().then(function () {
     subdivision.build('Modules/General/Routers').forEach(function (router) {
         app.use('/foo', router);
     });
-    //var rr = express.Router();
-    //rr.get('/bar', function (req, res) {
-    //    res.send('Foobar!');
-    //});
-    //app.use('/bar', rr);
+
     var server = app.listen(9000, function () {
         var host = server.address().address;
         var port = server.address().port;
